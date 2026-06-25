@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fiche de visite — Traitement d'eau Cerati</title>
+<style>
+  :root{
+    --bg:#0f1720; --card:#17222e; --card2:#1d2a38; --line:#2c3c4d;
+    --txt:#e8eef4; --muted:#9fb0c0; --accent:#39b7e6; --accent2:#46d39a;
+    --warn:#e6a23c; --bad:#e6614c; --in:#0d3b52;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.4;padding:0 0 96px}
+  header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#13202b,#111b24);
+    border-bottom:1px solid var(--line);padding:12px 14px}
+  header h1{font-size:17px;margin:0}
+  header p{margin:3px 0 0;font-size:12px;color:var(--muted)}
+  #savedDot{font-size:12px;color:var(--accent2);opacity:0;transition:opacity .3s}
+  .wrap{padding:14px;max-width:760px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+  h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px}
+  input,select,textarea{width:100%;background:var(--in);color:var(--txt);border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;font-size:16px;-webkit-appearance:none}
+  textarea{min-height:70px;resize:vertical}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+  .field{margin-bottom:10px}
+  .hint{font-size:12px;color:var(--muted);margin-top:2px}
+  .animal-line{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+  .lineHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .lineHead b{font-size:13px}
+  .del{background:transparent;border:none;color:var(--bad);font-size:13px;width:auto;padding:2px 6px;cursor:pointer}
+  .addbtn{background:var(--card2);color:var(--accent);border:1px dashed var(--accent);border-radius:10px;
+    padding:10px;font-size:14px;width:100%;cursor:pointer}
+  .res{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:6px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:90px;background:#0e1922;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+  .kpi .v{font-size:19px;font-weight:700;color:var(--accent2)}
+  .kpi .l{font-size:11px;color:var(--muted)}
+  .pick{font-size:14px;margin-top:6px}
+  .pick b{color:var(--accent2)}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:#0d161e;border-top:1px solid var(--line);
+    padding:10px 14px;display:flex;gap:10px;z-index:40}
+  .bar button{flex:1;border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;color:#06222e}
+  .btn-main{background:var(--accent2)}
+  .btn-sec{background:var(--card2);color:var(--accent);border:1px solid var(--line)}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0a2a1d;color:var(--accent2);
+    border:1px solid var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;
+    transition:opacity .25s;pointer-events:none;z-index:50;text-align:center;max-width:90%}
+  details{margin-top:8px}
+  summary{cursor:pointer;color:var(--accent);font-size:13px}
+  pre{white-space:pre-wrap;font-size:12px;color:var(--muted);background:#0e1922;border:1px solid var(--line);
+    border-radius:8px;padding:10px;margin-top:8px;max-height:280px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fiche de visite — Traitement d'eau</h1>
+  <p>Saisie terrain (fiche vierge à chaque ouverture). En fin de visite : « Générer le fichier » → tu m'envoies le JSON pour le devis.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- 0. IMPORT FICHE PRÉCÉDENTE -->
+  <div class="card">
+    <h2>📂 Reprendre / importer une fiche</h2>
+    <p class="sub">La fiche démarre vierge. Pour reprendre une saisie ou réutiliser une visite, charge ici le JSON d'une fiche précédente.</p>
+    <input type="file" id="importFicheFile" accept="application/json,.json">
+    <div id="importFicheInfo" class="hint" style="margin-top:6px"></div>
+  </div>
+
+  <!-- 0b. ARCHIVAGE CLOUD (Google Drive) -->
+  <div class="card" id="cloudCard">
+    <h2>☁️ Archiver dans Google Drive <span id="cloudBadge" class="hint" style="color:var(--bad)">non connecté</span></h2>
+    <p class="sub">Connecte-toi à Google, joins des photos/schémas, puis « Archiver » : un dossier Drive est créé avec le compte rendu (JSON + Word) et tes fichiers. Tu pourras ensuite l'envoyer par mail (Outlook) via un lien.</p>
+    <div class="row2">
+      <div><button class="addbtn" id="btnCloudAuth" type="button">Se connecter à Google</button></div>
+      <div><button class="addbtn" id="btnArchive" type="button" style="border-color:var(--accent2);color:var(--accent2)">Archiver dans Google Drive</button></div>
+    </div>
+    <label>Photos / schémas de l'installation (plusieurs possibles)</label>
+    <input type="file" id="cloudFiles" accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.heic" multiple>
+    <div id="cloudFilesList" class="hint" style="margin-top:6px"></div>
+    <div id="cloudProg" class="hint" style="margin-top:6px"></div>
+    <div id="cloudErr" class="hint" style="margin-top:2px;color:var(--bad)"></div>
+    <div id="cloudResult" style="margin-top:8px"></div>
+    <div id="cloudCfg" class="hint" style="margin-top:6px;color:var(--warn);display:none">⚙️ À configurer (clientId Google) + hébergement https — voir le guide.</div>
+  </div>
+
+  <!-- 1. VISITE -->
+  <div class="card">
+    <h2>1 · Visite / client</h2>
+    <div class="row2">
+      <div><label>Client / revendeur</label><input id="v_client" data-k="visite.client"></div>
+      <div><label>Ferme / exploitation</label><input id="v_expl" data-k="visite.exploitation"></div>
+    </div>
+    <div class="row2">
+      <div><label>Lieu / commune</label><input id="v_lieu" data-k="visite.lieu"></div>
+      <div><label>Date de visite</label><input type="date" id="v_date" data-k="visite.date_visite"></div>
+    </div>
+    <div class="row2">
+      <div><label>Technicien</label><input id="v_tech" data-k="visite.technicien"></div>
+      <div><label>Usage final de l'eau</label>
+        <select id="v_usage" data-k="visite.usage_final">
+          <option value="">—</option>
+          <option>Abreuvement animaux</option>
+          <option>Eau potable humaine</option>
+          <option>Lavage / nettoyage</option>
+          <option>Mixte</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ANALYSE D'EAU -->
+  <div class="card">
+    <h2>2 · Analyse d'eau</h2>
+    <div class="row3">
+      <div><label>pH</label><input type="number" step="0.1" id="a_ph" data-k="analyse.pH" data-num></div>
+      <div><label>Turbidité (NTU)</label><input type="number" step="0.1" id="a_turb" data-k="analyse.turbidite_NTU" data-num></div>
+      <div><label>Conduct. (µS/cm)</label><input type="number" step="1" id="a_cond" data-k="analyse.conductivite_uScm" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>Fer Fe (mg/L)</label><input type="number" step="0.01" id="a_fe" data-k="analyse.fer_mgL" data-num></div>
+      <div><label>Manganèse Mn (mg/L)</label><input type="number" step="0.01" id="a_mn" data-k="analyse.manganese_mgL" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>TAC / TAM (°f)</label><input type="number" step="0.5" id="a_tac" data-k="analyse.TAC_f" data-num></div>
+      <div><label>TH (°f)</label><input type="number" step="0.5" id="a_th" data-k="analyse.TH_f" data-num></div>
+    </div>
+    <details>
+      <summary>Autres paramètres (optionnel)</summary>
+      <div class="row3" style="margin-top:8px">
+        <div><label>Nitrates (mg/L)</label><input type="number" step="0.1" data-k="analyse.nitrates_mgL" data-num></div>
+        <div><label>Ammonium (mg/L)</label><input type="number" step="0.01" data-k="analyse.ammonium_mgL" data-num></div>
+        <div><label>Chlorures (mg/L)</label><input type="number" step="1" data-k="analyse.chlorures_mgL" data-num></div>
+      </div>
+      <div class="row3">
+        <div><label>Sulfates (mg/L)</label><input type="number" step="1" data-k="analyse.sulfates_mgL" data-num></div>
+        <div><label>Calcium (mg/L)</label><input type="number" step="1" data-k="analyse.calcium_mgL" data-num></div>
+        <div><label>Sodium (mg/L)</label><input type="number" step="1" data-k="analyse.sodium_mgL" data-num></div>
+      </div>
+      <label style="margin-top:6px">Microbiologie</label>
+      <div class="row3">
+        <div><label>Germes 22°C</label><input type="number" step="1" data-k="analyse.microbio.germes_22" data-num></div>
+        <div><label>Germes 37°C</label><input type="number" step="1" data-k="analyse.microbio.germes_37" data-num></div>
+        <div><label>Coliformes</label><input type="number" step="1" data-k="analyse.microbio.coliformes" data-num></div>
+      </div>
+      <div class="row2">
+        <div><label>E. coli</label><input type="number" step="1" data-k="analyse.microbio.ecoli" data-num></div>
+        <div><label>Entérocoques</label><input type="number" step="1" data-k="analyse.microbio.enterocoques" data-num></div>
+      </div>
+    </details>
+    <div class="row2" style="margin-top:8px">
+      <div><label>Laboratoire</label><input data-k="analyse.labo"></div>
+      <div><label>Date d'analyse</label><input type="date" data-k="analyse.date_analyse"></div>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>📷 Photo de l'analyse — Claude lira l'image et remplira les paramètres</label>
+      <input type="file" id="a_photo" accept="image/*" capture="environment">
+      <div class="hint">La photo est intégrée au fichier généré. Pas besoin de tout retaper : envoie-moi le fichier, je remplis l'analyse.</div>
+      <div id="photoPrev"></div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>Autres analyses (dates différentes) — l'analyse ci-dessus reste la référence du dimensionnement</label>
+      <div id="analysesExtra"></div>
+      <button class="addbtn" id="addAnalyse">+ Ajouter une analyse</button>
+    </div>
+  </div>
+
+  <!-- 3. CHEPTEL / CONSO -->
+  <div class="card">
+    <h2>3 · Cheptel / consommation</h2>
+    <div id="animals"></div>
+    <button class="addbtn" id="addAnimal">+ Ajouter un lot d'animaux</button>
+    <div class="row2" style="margin-top:10px">
+      <div><label>Lavage : volume (m³/j)</label><input type="number" step="0.1" id="c_lavage" data-k="cheptel.lavage_m3j" data-num></div>
+      <div><label>Lavage : débit instantané (m³/h)</label><input type="number" step="0.1" id="c_lavage_h" data-k="cheptel.lavage_m3h" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>Brumisation : volume (m³/j)</label><input type="number" step="0.1" id="c_brum" data-k="cheptel.brumisation_m3j" data-num></div>
+      <div><label>Brumisation : débit instantané (m³/h)</label><input type="number" step="0.1" id="c_brum_h" data-k="cheptel.brumisation_m3h" data-num></div>
+    </div>
+    <div class="hint">Débits instantanés = ajoutés au débit de pointe (ex. nettoyeur HP ≈ 1,8 m³/h). Le volume/j alimente la conso journalière.</div>
+    <div class="res">
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="k_cj">0</div><div class="l">Conso (m³/j)</div></div>
+        <div class="kpi"><div class="v" id="k_vh">0</div><div class="l">Débit à traiter = pointe (m³/h)</div></div>
+        <div class="kpi"><div class="v" id="k_prod">0</div><div class="l">Débit moyen /10h (m³/h)</div></div>
+      </div>
+      <div class="hint">Débit à traiter : SANS stockage → débit de POINTE (Vh max) ; AVEC stockage → débit MOYEN (conso/24 h). Renseigne le stockage en section 5.</div>
+    </div>
+  </div>
+
+  <!-- 4. FORAGE / HYDRAULIQUE -->
+  <div class="card">
+    <h2>4 · Forage / hydraulique</h2>
+    <div class="row2">
+      <div><label>Niveau dynamique / prof. pompe (m)</label><input type="number" step="1" data-k="forage.niveau_dynamique_m" data-num></div>
+      <div><label>Débit forage dispo (m³/h)</label><input type="number" step="0.1" id="f_debit" data-k="forage.debit_forage_m3h" data-num></div>
+    </div>
+    <label>Débit mesuré de la pompe de forage (à une pression donnée)</label>
+    <div class="row2">
+      <div><label>Débit (m³/h)</label><input type="number" step="0.1" data-k="forage.debit_mesure_m3h" data-num></div>
+      <div><label>à la pression (bar)</label><input type="number" step="0.1" data-k="forage.debit_mesure_pression_bar" data-num></div>
+    </div>
+    <div class="field"><label>Pompe forage (marque / modèle)</label><input data-k="forage.pompe_marque_modele"></div>
+    <label>Réservoir de mise en pression</label>
+    <div class="row3">
+      <div><label>Type</label>
+        <select data-k="forage.reservoir.type">
+          <option value="">—</option>
+          <option>Galvanisé</option>
+          <option>À vessie</option>
+          <option>Bâche + surpresseur</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div><label>Volume (L)</label><input type="number" step="1" data-k="forage.reservoir.volume_L" data-num></div>
+      <div><label>Pression (bar)</label><input type="number" step="0.1" data-k="forage.reservoir.pression_bar" data-num></div>
+    </div>
+    <label>Tuyau de refoulement</label>
+    <div class="row3">
+      <div><label>Ø intérieur (mm)</label><input type="number" step="1" data-k="forage.tuyau.diam_int_mm" data-num></div>
+      <div><label>Longueur (m)</label><input type="number" step="1" data-k="forage.tuyau.longueur_m" data-num></div>
+      <div><label>Matière</label>
+        <select data-k="forage.tuyau.matiere">
+          <option value="">—</option><option>PEHD</option><option>PVC</option><option>Acier</option><option>Cuivre</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. STOCKAGE & LAVAGE -->
+  <div class="card">
+    <h2>5 · Stockage et remise en pression</h2>
+    <div class="row2">
+      <div><label>Stockage eau traitée ?</label>
+        <select data-k="stockage.eau_traitee_stockee"><option value="">—</option><option>Oui</option><option>Non</option></select>
+      </div>
+      <div><label>Volume cuve stockage (m³)</label><input type="number" step="0.1" data-k="stockage.volume_cuve_m3" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>Eau de lavage du filtre</label>
+        <select id="s_lavage" data-k="stockage.source_lavage"><option value="">—</option><option value="forage">Forage</option><option value="reprise">Pompe de reprise (eau traitée)</option></select>
+      </div>
+      <div><label>Débit de pointe élevage (m³/h)</label>
+        <input id="s_pointe_disp" value="—" readonly style="background:#0e1922;color:var(--accent2);font-weight:700">
+        <div class="hint">calculé d'après la consommation (Vh max, section 3)</div>
+      </div>
+    </div>
+    <div class="hint" id="reprise_hint"></div>
+  </div>
+
+  <!-- 6. DÉSINFECTION -->
+  <div class="card">
+    <h2>6 · Désinfection</h2>
+    <div class="row2">
+      <div><label>Désinfection nécessaire ?</label>
+        <select data-k="desinfection.besoin"><option value="">—</option><option>Oui</option><option>Non</option><option>À évaluer</option></select>
+      </div>
+      <div><label>Type souhaité</label>
+        <select data-k="desinfection.type">
+          <option value="">—</option><option>UV</option><option>Chlore / javel</option><option>Dioxyde de chlore</option><option>Aucun</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Raison / contexte (biofilm, microbio…)</label><input data-k="desinfection.raison"></div>
+  </div>
+
+  <!-- 7. ALIMENTATION ÉLECTRIQUE -->
+  <div class="card">
+    <h2>7 · Alimentation électrique du local</h2>
+    <div class="row2">
+      <div><label>Alimentation présente ?</label>
+        <select data-k="electrique.presente"><option value="">—</option><option>Oui</option><option>Non</option></select>
+      </div>
+      <div><label>Tension</label>
+        <select data-k="electrique.tension"><option value="">—</option><option>Mono 230 V</option><option>Tri 400 V</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div><label>Section de câble (mm²)</label><input type="number" step="0.5" data-k="electrique.section_cable_mm2" data-num></div>
+      <div><label>Longueur câble / distance tableau (m)</label><input type="number" step="1" data-k="electrique.longueur_cable_m" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>Disjoncteur en place (calibre A)</label><input type="number" step="1" data-k="electrique.disjoncteur_A" data-num></div>
+      <div><label>Différentiel</label>
+        <select data-k="electrique.differentiel"><option value="">—</option><option>30 mA présent</option><option>Absent</option><option>À vérifier</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Protections / remarques (courbe disjoncteur, mise à la terre…)</label><input data-k="electrique.protections"></div>
+  </div>
+
+  <!-- 8. ÉVACUATION EAUX DE LAVAGE -->
+  <div class="card">
+    <h2>8 · Évacuation des eaux de lavage</h2>
+    <div class="row2">
+      <div><label>Exutoire disponible</label>
+        <select data-k="evacuation.exutoire">
+          <option value="">—</option>
+          <option>Pluvial</option>
+          <option>Fosse / puisard</option>
+          <option>Réseau eaux usées</option>
+          <option>Fossé / milieu naturel</option>
+          <option>Aucun à proximité</option>
+        </select>
+      </div>
+      <div><label>Distance de l'exutoire (m)</label><input type="number" step="1" data-k="evacuation.distance_m" data-num></div>
+    </div>
+    <div class="row2">
+      <div><label>Ø évacuation dispo (mm)</label><input type="number" step="1" data-k="evacuation.diam_mm" data-num></div>
+      <div><label>Remarques</label><input data-k="evacuation.remarques"></div>
+    </div>
+    <div class="hint">Le détassage envoie un débit important (eau + boues de fer) ponctuellement : vérifier que l'exutoire l'accepte.</div>
+  </div>
+
+  <!-- 9. PRÉCONISATION INDICATIVE + NOTES -->
+  <div class="card">
+    <h2>9 · Préconisation indicative</h2>
+    <p class="hint">Calculée sur le terrain à partir de l'analyse (priorité au biologique). Indicatif — le devis final est établi ensuite.</p>
+    <div class="res" id="preco"></div>
+    <div class="field" style="margin-top:10px"><label>Notes / remarques</label><textarea data-k="notes"></textarea></div>
+  </div>
+
+</div>
+
+<div class="bar">
+  <button class="btn-sec" id="btnWord">Word</button>
+  <button class="btn-sec" id="btnMail">Mail</button>
+  <button class="btn-main" id="btnGen">JSON</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ===== Données espèces (conso L/animal/j) ===== */
+const ESPECES = {
+  "Vache laitière (VL)":{conso:100, grp:"bovins", systeme:true},
+  "Vache laitière + suite (veaux/génisses)":{conso:130, grp:"bovins", systeme:true},
+  "Vache allaitante / génisse":{conso:60, grp:"bovins", systeme:true},
+  "Veau de boucherie":{conso:16, grp:"bovins"},
+  "Taurillon engraissement":{conso:40, grp:"bovins"},
+  "Poulet de chair (fin de lot)":{conso:0.25, grp:"volailles"},
+  "Poule pondeuse":{conso:0.25, grp:"volailles"},
+  "Dinde (fin de lot)":{conso:1.2, grp:"volailles"},
+  "Canard":{conso:1.0, grp:"volailles"},
+  "Truie (maternité)":{conso:30, grp:"porcs"},
+  "Porc post-sevrage":{conso:1, grp:"porcs"},
+  "Porc engraissement":{conso:8, grp:"porcs"},
+  "Caprin / ovin":{conso:10, grp:"caprins"}
+};
+const PROD_HEURES = 10;
+
+/* Vh max (m³/h) par lot selon espèce/système */
+function vhMaxLigne(esp, systeme, cjm3){
+  const g=ESPECES[esp]?.grp;
+  if(g==="bovins"){
+    if(systeme==="salle_traite") return 0.40*cjm3;
+    return cjm3/10;            // robot ou défaut
+  }
+  if(g==="volailles") return cjm3/10;
+  if(g==="porcs") return cjm3/12;
+  if(g==="caprins") return cjm3/16;
+  return cjm3/10;
+}
+
+/* ===== État ===== */
+const LS="cerati_fiche_visite_v1";
+let animals=[];   // {esp, nombre, systeme}
+let analysesExtra=[]; // analyses complémentaires {date,labo,ph,fe,mn,tac,th,turb,note}
+let lastVh=0;     // débit de pointe élevage (Vh max) calculé
+let lastMoyen=0;  // débit d'eau moyen (conso jour / 24 h)
+/* Règle débit à traiter : SANS stockage -> débit de pointe ; AVEC stockage -> débit moyen */
+function hasStorage(){ const el=document.querySelector('[data-k="stockage.eau_traitee_stockee"]'); return !!el && el.value==="Oui"; }
+function debitATraiter(){ return hasStorage() ? lastMoyen : lastVh; }
+/* Microstations gravitaires FG (déferrisation biologique Hydro Anthracite uniquement), 2 à 8 m³/h */
+/* Microstations FG : q = débit filtration ; lav = débit pompe de lavage (fiche) ; nlav = nb de lavages */
+const FG=[{m:"FG2",q:2,lav:9,nlav:1},{m:"FG2.5",q:2.5,lav:18,nlav:1},{m:"FG4",q:4,lav:25,nlav:1},{m:"FG8",q:8,lav:25,nlav:2}];
+const FG_LAVAGE_MIN=4;
+function fgModel(q){ for(const f of FG){ if(f.q>=q) return f; } return null; }
+function fgVlavage(f){ return f.lav*(FG_LAVAGE_MIN/60)*f.nlav; }
+
+/* ===== Lignes animaux ===== */
+function renderAnimals(){
+  const root=document.getElementById("animals"); root.innerHTML="";
+  animals.forEach((a,i)=>{
+    const g=ESPECES[a.esp]?.grp;
+    const opts=Object.keys(ESPECES).map(e=>`<option ${e===a.esp?"selected":""}>${e}</option>`).join("");
+    const sysRow = g==="bovins" ? `
+      <div><label>Système de traite</label>
+        <select data-ai="${i}" data-af="systeme">
+          <option value="robot" ${a.systeme==="robot"?"selected":""}>Robot</option>
+          <option value="salle_traite" ${a.systeme==="salle_traite"?"selected":""}>Salle de traite</option>
+        </select></div>` : `<div></div>`;
+    const div=document.createElement("div"); div.className="animal-line";
+    div.innerHTML=`
+      <div class="lineHead"><b>Lot ${i+1}</b><button class="del" data-del="${i}">supprimer</button></div>
+      <div class="row2">
+        <div><label>Espèce</label><select data-ai="${i}" data-af="esp">${opts}</select></div>
+        <div><label>Nombre</label><input type="number" step="1" min="0" value="${a.nombre||""}" data-ai="${i}" data-af="nombre"></div>
+      </div>
+      <div class="row2">${sysRow}<div></div></div>`;
+    root.appendChild(div);
+  });
+  root.querySelectorAll("[data-ai]").forEach(el=>el.addEventListener("input",e=>{
+    const i=+e.target.dataset.ai, f=e.target.dataset.af;
+    animals[i][f]= f==="nombre" ? (parseFloat(e.target.value)||0) : e.target.value;
+    if(f==="esp") renderAnimals();
+    recalc(); save();
+  }));
+  root.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
+    animals.splice(+e.target.dataset.del,1); renderAnimals(); recalc(); save();
+  }));
+}
+function consoLigne(a){
+  const c=ESPECES[a.esp]?.conso||0;
+  return c*(a.nombre||0)/1000.0; // m³/j
+}
+
+/* ===== Analyses complémentaires (dates différentes) ===== */
+function renderAnalysesExtra(){
+  const root=document.getElementById("analysesExtra"); root.innerHTML="";
+  analysesExtra.forEach((a,i)=>{
+    const div=document.createElement("div"); div.className="animal-line";
+    div.innerHTML=`
+      <div class="lineHead"><b>Analyse ${i+1}</b><button class="del" data-adel="${i}">supprimer</button></div>
+      <div class="row2">
+        <div><label>Date</label><input type="date" value="${a.date||""}" data-axi="${i}" data-axf="date"></div>
+        <div><label>Labo</label><input value="${a.labo||""}" data-axi="${i}" data-axf="labo"></div>
+      </div>
+      <div class="row3">
+        <div><label>pH</label><input type="number" step="0.1" value="${a.ph??""}" data-axi="${i}" data-axf="ph"></div>
+        <div><label>Fe (mg/L)</label><input type="number" step="0.01" value="${a.fe??""}" data-axi="${i}" data-axf="fe"></div>
+        <div><label>Mn (mg/L)</label><input type="number" step="0.01" value="${a.mn??""}" data-axi="${i}" data-axf="mn"></div>
+      </div>
+      <div class="row3">
+        <div><label>TAC (°f)</label><input type="number" step="0.5" value="${a.tac??""}" data-axi="${i}" data-axf="tac"></div>
+        <div><label>TH (°f)</label><input type="number" step="0.5" value="${a.th??""}" data-axi="${i}" data-axf="th"></div>
+        <div><label>Turbidité</label><input type="number" step="0.1" value="${a.turb??""}" data-axi="${i}" data-axf="turb"></div>
+      </div>
+      <div class="field"><label>Remarque</label><input value="${a.note||""}" data-axi="${i}" data-axf="note"></div>`;
+    root.appendChild(div);
+  });
+  root.querySelectorAll("[data-axi]").forEach(el=>el.addEventListener("input",e=>{
+    const i=+e.target.dataset.axi, f=e.target.dataset.axf;
+    let v=e.target.value;
+    if(["ph","fe","mn","tac","th","turb"].includes(f)) v = v===""?null:parseFloat(v);
+    analysesExtra[i][f]=v; recalc(); save();
+  }));
+  root.querySelectorAll("[data-adel]").forEach(b=>b.addEventListener("click",e=>{
+    analysesExtra.splice(+e.target.dataset.adel,1); renderAnalysesExtra(); recalc(); save();
+  }));
+}
+
+/* Valeurs retenues pour le dimensionnement : la PLUS HAUTE de chaque paramètre, SAUF le pH (la plus basse) */
+function allAnalyses(){
+  const arr=[{ph:num("analyse.pH"),fe:num("analyse.fer_mgL"),mn:num("analyse.manganese_mgL"),
+    tac:num("analyse.TAC_f"),th:num("analyse.TH_f"),turb:num("analyse.turbidite_NTU")}];
+  analysesExtra.forEach(a=>arr.push({ph:+a.ph||0,fe:+a.fe||0,mn:+a.mn||0,tac:+a.tac||0,th:+a.th||0,turb:+a.turb||0}));
+  return arr;
+}
+function retained(){
+  const arr=allAnalyses(), mx=k=>Math.max(...arr.map(a=>a[k]||0));
+  const phs=arr.map(a=>a.ph).filter(v=>v>0);
+  return {fe:mx("fe"),mn:mx("mn"),tac:mx("tac"),th:mx("th"),turb:mx("turb"), ph: phs.length?Math.min(...phs):0};
+}
+
+/* ===== Calculs conso ===== */
+function recalc(){
+  let cj=0, vh=0;
+  animals.forEach(a=>{ const c=consoLigne(a); cj+=c; vh+=vhMaxLigne(a.esp,a.systeme,c); });
+  const lav=parseFloat(document.getElementById("c_lavage").value)||0;
+  const brum=parseFloat(document.getElementById("c_brum").value)||0;
+  cj+=lav+brum;
+  // débits instantanés (lavage HP, brumisation) ajoutés au débit de pointe
+  const lavH=parseFloat(document.getElementById("c_lavage_h").value)||0;
+  const brumH=parseFloat(document.getElementById("c_brum_h").value)||0;
+  vh+=lavH+brumH;
+  const moyen=cj/PROD_HEURES;   // débit moyen sur 10 h
+  document.getElementById("k_cj").textContent=cj.toFixed(1);
+  document.getElementById("k_vh").textContent=vh.toFixed(1);
+  document.getElementById("k_prod").textContent=moyen.toFixed(2);
+  lastVh=vh; lastMoyen=moyen;
+  const sp=document.getElementById("s_pointe_disp"); if(sp) sp.value = vh>0 ? vh.toFixed(1) : "—";
+  renderPreco(cj);
+  return {cj, moyen, vh};
+}
+
+/* ===== Préconisation indicative (mêmes règles que l'outil de dimensionnement) ===== */
+const R={ph_fe_bio_max:7.3, ph_mn_bio_min:7.4, tac_decarb:30,
+  pyro_ph_cible_mn:7.8, pyro_fe_max:1.5, pyro_mn_max:1.0, pyro_sum_max:2.0, seuil_FA:0.85,
+  mn_norme:0.05, mn_faible_x:3};
+function num(k){ const el=document.querySelector(`[data-k="${k}"]`); return el?(parseFloat(el.value)||0):0; }
+function preco(){
+  const rt=retained();
+  const fe=rt.fe, mn=rt.mn, ph=rt.ph, tac=rt.tac;
+  const g22=num("analyse.microbio.germes_22"), g37=num("analyse.microbio.germes_37"), coli=num("analyse.microbio.coliformes");
+  let stages=[], notes=[];
+  if(fe<=0&&mn<=0){ if(ph<=0) return {stages,notes,empty:true}; }
+  if((fe>0||mn>0) && ph<=0){ notes.push("Renseigne le pH pour trancher le procédé (biologique / chimique)."); return {stages,notes}; }
+  const decarb=tac>=R.tac_decarb;
+  const fa = (fe>R.seuil_FA||mn>R.seuil_FA||(fe+mn)>R.seuil_FA);
+  // Déferrisation biologique : 2 voies possibles (pression acier FA OU gravitaire microstation FG)
+  const ironBio=()=>{
+    const fg=fgModel(debitATraiter());
+    const pres=(fe>R.seuil_FA)?"filtre sous pression acier FA":"filtre sous pression (bouteille)";
+    let t="Fer — déferrisation BIOLOGIQUE (Hydro Anthracite + aération). Au choix : ① "+pres;
+    if(fg){ const v=fgVlavage(fg);
+      t += ` ; ② microstation GRAVITAIRE ${fg.m} (lavage ${fg.lav} m³/h × ${FG_LAVAGE_MIN} min${fg.nlav>1?" ×"+fg.nlav:""} = ${v.toFixed(1)} m³ ; pompe de lavage intégrée, sans compresseur ; stockage interne = pilotage → ajouter cuve aérienne externe : 1 cuve lavage+reprise, OU 2 cuves si désinfection [non chlorée pour le lavage du FG + chlorée pour la ferme] + pompe de remise en pression)`;
+    } else t += " ; ② gravitaire écartée (production hors plage 2-8 m³/h)";
+    return t;
+  };
+  if(fe>0&&mn<=0){
+    if(ph<=0) stages.push("Fer présent — renseigne le pH pour trancher biologique / chimique");
+    else if(ph<=R.ph_fe_bio_max) stages.push(ironBio());
+    else stages.push(`Fer : déferrisation CHIMIQUE (oxydation par aération sous pression, acier FA) — pH ${ph} > ${R.ph_fe_bio_max}, biologique impossible`);
+  } else if(mn>0&&fe<=0){
+    if(ph>=R.ph_mn_bio_min) stages.push("Manganèse : démanganisation BIOLOGIQUE (aération devant)");
+    else if(!decarb) stages.push("Manganèse : biologique avec léger relèvement de pH (pompe doseuse)");
+    else stages.push("Manganèse : PYROLUSITE (chimique) — TAC élevé, pas de relèvement pH");
+  } else if(fe>0&&mn>0){
+    if(mn <= R.mn_norme*R.mn_faible_x){
+      // Mn faible (≤ 3× la norme) -> proposer de NE PAS le traiter, 1 seul filtre pour le fer
+      stages.push("Fer (Mn faible — non traité) : "+(ph>0&&ph<=R.ph_fe_bio_max?ironBio():"déferrisation chimique (aération sous pression, acier FA)"));
+      notes.push(`Mn = ${mn} mg/L = ${(mn/R.mn_norme).toFixed(1)}× la norme (${R.mn_norme}) → FAIBLE. Option 1 : ne pas le traiter (1 filtre fer). Option 2 : Fe+Mn sur 1 SEUL filtre PYROLUSITE — faisable au pH actuel (charge Mn faible).`);
+    } else {
+    const tooHigh=fe>R.pyro_fe_max||mn>R.pyro_mn_max||(fe+mn)>R.pyro_sum_max;
+    if(!tooHigh && !(ph<R.pyro_ph_cible_mn && decarb)){
+      stages.push("Fer + Mn en 1 étape sur PYROLUSITE"+(ph<R.pyro_ph_cible_mn?" (relever pH ≈ 7,8)":""));
+    } else {
+      stages.push("Étape 1 — "+(ph>0&&ph<=R.ph_fe_bio_max?ironBio():"Fer : déferrisation chimique (aération sous pression, acier FA)"));
+      if(ph>=R.ph_mn_bio_min) stages.push("Étape 2 — Mn : démanganisation biologique");
+      else if(!decarb) stages.push("Étape 2 — Mn : biologique + relèvement pH");
+      else stages.push("Étape 2 — Mn : PYROLUSITE (chimique)");
+      notes.push(tooHigh?"Concentrations élevées → 2 étapes (Fe puis Mn)":"TAC élevé (décarbonatation) → 2 étapes sans relever le pH");
+    }
+    }
+  }
+  if(fa) notes.push("Fe/Mn > 0,85 mg/L → filtre acier électro-pneumatique (FA)");
+  // désinfection
+  let desinf=null;
+  if(coli>0) desinf="Désinfection conseillée (coliformes présents) — UV ou chlore";
+  else if(g22>=500||g37>=200) desinf="Forte charge bactérienne (biofilm) — purges + désinfection UV/chlore à prévoir";
+  return {stages,notes,desinf};
+}
+function renderPreco(cj){
+  const el=document.getElementById("preco"); const p=preco();
+  if(p.empty){ el.innerHTML='<div class="pick" style="color:var(--muted)">Renseigne au moins le pH et le Fe/Mn pour une préconisation.</div>'; return; }
+  let h="";
+  p.stages.forEach(s=>h+=`<div class="pick">• ${s}</div>`);
+  if(p.desinf) h+=`<div class="pick" style="color:var(--accent2)">• ${p.desinf}</div>`;
+  (p.notes||[]).forEach(n=>h+=`<div class="pick" style="color:var(--warn)">⚠ ${n}</div>`);
+  const dat=debitATraiter();
+  if(dat>0) h+=`<div class="pick" style="color:var(--muted)">Débit à traiter ≈ <b>${dat.toFixed(2)} m³/h</b> — ${hasStorage()?"débit MOYEN (stockage présent)":"débit de POINTE (pas de stockage)"} (conso ${cj.toFixed(1)} m³/j)</div>`;
+  el.innerHTML=h;
+}
+
+/* ===== Reprise hint ===== */
+function repriseHint(){
+  const el=document.getElementById("reprise_hint");
+  el.innerHTML = document.getElementById("s_lavage").value==="reprise" && lastVh>0
+    ? `Pompe de reprise max conseillée = 2 × pointe (${lastVh.toFixed(1)}) = <b>${(2*lastVh).toFixed(1)} m³/h</b>.` : "";
+}
+
+/* ===== Sauvegarde brouillon ===== */
+function flash(t){const el=document.getElementById("toast");el.textContent=t;el.style.opacity=1;setTimeout(()=>el.style.opacity=0,1600);}
+function flashSaved(){const d=document.getElementById("savedDot");d.style.opacity=1;clearTimeout(flashSaved._t);flashSaved._t=setTimeout(()=>d.style.opacity=0,1000);}
+function collect(){
+  const o={};
+  document.querySelectorAll("[data-k]").forEach(el=>{
+    const path=el.dataset.k.split("."); let cur=o;
+    path.forEach((p,i)=>{ if(i===path.length-1){ let v=el.value; if(el.dataset.num!==undefined) v=v===""?null:parseFloat(v); cur[p]=v; } else cur=cur[p]=cur[p]||{}; });
+  });
+  o.cheptel=o.cheptel||{};
+  o.cheptel.lignes=animals.map(a=>({espece:a.esp,nombre:a.nombre||0,systeme:a.systeme||null,conso_jour_m3:+consoLigne(a).toFixed(3)}));
+  o.analyses_complementaires=analysesExtra.map(a=>({date:a.date||null,labo:a.labo||null,pH:a.ph??null,fer_mgL:a.fe??null,manganese_mgL:a.mn??null,TAC_f:a.tac??null,TH_f:a.th??null,turbidite_NTU:a.turb??null,remarque:a.note||null}));
+  const rt=retained();
+  o.valeurs_retenues_dimensionnement={_regle:"Valeur la plus HAUTE de chaque paramètre entre toutes les analyses, SAUF le pH = la plus BASSE (cas le plus défavorable).",fer_mgL:rt.fe,manganese_mgL:rt.mn,TAC_f:rt.tac,TH_f:rt.th,turbidite_NTU:rt.turb,pH:rt.ph};
+  const r=recalc();
+  o.cheptel.conso_jour_total_m3=+r.cj.toFixed(2);
+  o.cheptel.debit_moyen_m3h=+r.moyen.toFixed(2);
+  o.cheptel.vh_max_m3h=+r.vh.toFixed(2);
+  o.stockage=o.stockage||{}; o.stockage.debit_pointe_m3h=+r.vh.toFixed(2);
+  const p=preco();
+  o.preconisation_indicative={etapes:p.stages||[], desinfection:p.desinf||null, remarques:p.notes||[]};
+  return o;
+}
+function save(){ /* pas de sauvegarde : la fiche démarre VIERGE à chaque ouverture */ }
+
+/* Import d'une fiche précédente (JSON généré par « Générer le fichier ») */
+function importFicheVisite(o){
+  // champs data-k (visite, analyse, forage, stockage, désinfection, électrique, évacuation, notes)
+  document.querySelectorAll("[data-k]").forEach(el=>{
+    const path=el.dataset.k.split("."); let cur=o, ok=true;
+    for(const p of path){ if(cur && typeof cur==="object" && p in cur) cur=cur[p]; else {ok=false;break;} }
+    if(ok && cur!==null && cur!==undefined && typeof cur!=="object") el.value=cur;
+  });
+  // cheptel
+  if(Array.isArray(o.cheptel?.lignes))
+    animals = o.cheptel.lignes.map(l=>({esp:l.espece, nombre:l.nombre||0, systeme:l.systeme||"salle_traite"}));
+  // analyses complémentaires
+  if(Array.isArray(o.analyses_complementaires))
+    analysesExtra = o.analyses_complementaires.map(a=>({date:a.date||"",labo:a.labo||"",ph:a.pH,fe:a.fer_mgL,mn:a.manganese_mgL,tac:a.TAC_f,th:a.TH_f,turb:a.turbidite_NTU,note:a.remarque||""}));
+  // photo
+  if(o.analyse?.photo_base64){ photoDataURL=o.analyse.photo_base64; showPhoto(); }
+  renderAnimals(); renderAnalysesExtra(); recalc(); repriseHint();
+}
+document.getElementById("importFicheFile").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ const o=JSON.parse(rd.result); importFicheVisite(o);
+      const v=o.visite||{}; document.getElementById("importFicheInfo").innerHTML=`✓ Fiche chargée — <b>${v.client||"client ?"}</b>${v.date_visite?(" du "+v.date_visite):""}.`;
+    }catch(err){ document.getElementById("importFicheInfo").textContent="Fichier illisible (JSON invalide)."; } };
+  rd.readAsText(f);
+});
+
+/* ===== Résumé lisible ===== */
+function resumeTexte(o){
+  const L=[]; const g=(k,d="—")=>{ let c=o,pp=k.split("."); for(const x of pp){c=c&&c[x];} return (c===null||c===undefined||c==="")?d:c; };
+  L.push("FICHE DE VISITE — TRAITEMENT D'EAU");
+  L.push("Client : "+g("visite.client")+"  |  Exploitation : "+g("visite.exploitation"));
+  L.push("Lieu : "+g("visite.lieu")+"  |  Date : "+g("visite.date_visite")+"  |  Technicien : "+g("visite.technicien"));
+  L.push("Usage : "+g("visite.usage_final"));
+  L.push("");
+  L.push("ANALYSE D'EAU");
+  L.push(`  pH ${g("analyse.pH")} | Turbidité ${g("analyse.turbidite_NTU")} NTU | Conduct. ${g("analyse.conductivite_uScm")} µS/cm`);
+  L.push(`  Fer ${g("analyse.fer_mgL")} mg/L | Manganèse ${g("analyse.manganese_mgL")} mg/L`);
+  L.push(`  TAC ${g("analyse.TAC_f")} °f | TH ${g("analyse.TH_f")} °f`);
+  L.push(`  Labo : ${g("analyse.labo")} (${g("analyse.date_analyse")})`);
+  (o.analyses_complementaires||[]).forEach((a,i)=>L.push(`  Analyse compl. ${i+1} (${a.date||"?"}) : pH ${a.pH??"—"} | Fe ${a.fer_mgL??"—"} | Mn ${a.manganese_mgL??"—"} | TAC ${a.TAC_f??"—"} | TH ${a.TH_f??"—"} | turb ${a.turbidite_NTU??"—"}${a.remarque?" — "+a.remarque:""}`));
+  if(o.valeurs_retenues_dimensionnement){ const v=o.valeurs_retenues_dimensionnement;
+    L.push(`  VALEURS RETENUES (max, pH mini) : Fe ${v.fer_mgL} | Mn ${v.manganese_mgL} | TAC ${v.TAC_f} | TH ${v.TH_f} | turb ${v.turbidite_NTU} | pH ${v.pH}`); }
+  L.push("");
+  L.push("CHEPTEL / CONSOMMATION");
+  (o.cheptel?.lignes||[]).forEach(l=>L.push(`  - ${l.nombre} × ${l.espece}${l.systeme?" ("+l.systeme+")":""} = ${l.conso_jour_m3} m³/j`));
+  L.push(`  Conso totale : ${g("cheptel.conso_jour_total_m3")} m³/j`);
+  L.push(`  Débit de pointe : ${g("cheptel.vh_max_m3h")} m³/h   |   Débit moyen /10h : ${g("cheptel.debit_moyen_m3h")} m³/h`);
+  L.push(`  Stockage eau traitée : ${g("stockage.eau_traitee_stockee")} → DÉBIT À TRAITER = ${(o.stockage&&o.stockage.eau_traitee_stockee==="Oui")?"débit MOYEN":"débit de POINTE"}`);
+  L.push("");
+  L.push("FORAGE / HYDRAULIQUE");
+  L.push(`  Niveau dynamique ${g("forage.niveau_dynamique_m")} m | Débit forage ${g("forage.debit_forage_m3h")} m³/h`);
+  L.push(`  Débit mesuré pompe : ${g("forage.debit_mesure_m3h")} m³/h à ${g("forage.debit_mesure_pression_bar")} bar`);
+  L.push(`  Pompe : ${g("forage.pompe_marque_modele")}`);
+  L.push(`  Réservoir : ${g("forage.reservoir.type")} ${g("forage.reservoir.volume_L")} L à ${g("forage.reservoir.pression_bar")} bar`);
+  L.push(`  Refoulement : Ø${g("forage.tuyau.diam_int_mm")} mm, ${g("forage.tuyau.longueur_m")} m, ${g("forage.tuyau.matiere")}`);
+  L.push("");
+  L.push("STOCKAGE ET REMISE EN PRESSION");
+  L.push(`  Stockage eau traitée : ${g("stockage.eau_traitee_stockee")} (${g("stockage.volume_cuve_m3")} m³)`);
+  L.push(`  Eau de lavage : ${g("stockage.source_lavage")} | Pointe élevage ${g("stockage.debit_pointe_m3h")} m³/h`);
+  L.push("");
+  L.push("DÉSINFECTION");
+  L.push(`  Besoin : ${g("desinfection.besoin")} | Type : ${g("desinfection.type")} | ${g("desinfection.raison")}`);
+  L.push("");
+  L.push("ALIMENTATION ÉLECTRIQUE");
+  L.push(`  Présente : ${g("electrique.presente")} | Tension : ${g("electrique.tension")}`);
+  L.push(`  Câble : ${g("electrique.section_cable_mm2")} mm², ${g("electrique.longueur_cable_m")} m | Disj. ${g("electrique.disjoncteur_A")} A | Diff. ${g("electrique.differentiel")}`);
+  L.push(`  Protections : ${g("electrique.protections")}`);
+  L.push("");
+  L.push("ÉVACUATION DES EAUX DE LAVAGE");
+  L.push(`  Exutoire : ${g("evacuation.exutoire")} | Distance : ${g("evacuation.distance_m")} m | Ø évacuation : ${g("evacuation.diam_mm")} mm`);
+  L.push(`  Remarques : ${g("evacuation.remarques")}`);
+  L.push("");
+  L.push("PRÉCONISATION INDICATIVE");
+  (o.preconisation_indicative?.etapes||[]).forEach(s=>L.push("  • "+s));
+  if(o.preconisation_indicative?.desinfection) L.push("  • "+o.preconisation_indicative.desinfection);
+  (o.preconisation_indicative?.remarques||[]).forEach(n=>L.push("  ⚠ "+n));
+  L.push("");
+  L.push("NOTES : "+g("notes"));
+  return L.join("\n");
+}
+
+/* ===== Génération fichiers ===== */
+function fname(ext){
+  const clean=s=>(s||"").replace(/[^a-z0-9]/gi,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
+  const parts=[clean(document.getElementById("v_client").value),   // client / revendeur
+               clean(document.getElementById("v_expl").value),     // ferme / exploitation
+               clean(document.getElementById("v_date").value)      // date
+              ].filter(x=>x);
+  const base = parts.length ? parts.join("_") : "fiche_visite";
+  return `${base}.${ext}`;
+}
+function dl(name, text, mime){
+  const b=new Blob([text],{type:mime}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+}
+function genJSON(){
+  const o=collect(); o.meta={app:"Fiche visite traitement eau Cerati", version:1, genere_le:new Date().toISOString()};
+  if(photoDataURL){ o.analyse=o.analyse||{}; o.analyse.photo_base64=photoDataURL;
+    o.analyse._photo_note="Photo de l'analyse jointe : Claude doit lire l'image et compléter les paramètres d'analyse manquants."; }
+  o.resume_texte=resumeTexte(o);
+  dl(fname("json"), JSON.stringify(o,null,2), "application/json");
+  flash(photoDataURL?"Fichier généré (avec photo) ✓ — envoie-le à Claude":"Fichier JSON généré ✓ — envoie-le à Claude pour le devis");
+}
+
+/* ===== Photo de l'analyse ===== */
+let photoDataURL=null;
+function handlePhoto(file){
+  if(!file) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=()=>{
+    const max=1600, sc=Math.min(1, max/Math.max(img.width,img.height));
+    const c=document.createElement("canvas");
+    c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    photoDataURL=c.toDataURL("image/jpeg",0.72);
+    showPhoto();
+  }; img.src=rd.result; };
+  rd.readAsDataURL(file);
+}
+function showPhoto(){
+  const el=document.getElementById("photoPrev");
+  if(!photoDataURL){ el.innerHTML=""; return; }
+  el.innerHTML=`<img src="${photoDataURL}" style="max-width:100%;border-radius:10px;margin-top:8px;border:1px solid var(--line)"><br><button class="del" id="delPhoto">retirer la photo</button>`;
+  const d=document.getElementById("delPhoto");
+  if(d) d.addEventListener("click",()=>{photoDataURL=null;document.getElementById("a_photo").value="";showPhoto();});
+}
+
+/* ===== Listeners ===== */
+document.getElementById("a_photo").addEventListener("change",e=>handlePhoto(e.target.files&&e.target.files[0]));
+document.querySelectorAll("[data-k]").forEach(el=>el.addEventListener("input",()=>{recalc();repriseHint();save();}));
+document.getElementById("addAnimal").addEventListener("click",()=>{animals.push({esp:"Vache laitière (VL)",nombre:0,systeme:"salle_traite"});renderAnimals();recalc();save();});
+document.getElementById("addAnalyse").addEventListener("click",()=>{analysesExtra.push({date:"",labo:"",ph:null,fe:null,mn:null,tac:null,th:null,turb:null,note:""});renderAnalysesExtra();recalc();save();});
+document.getElementById("s_lavage").addEventListener("change",repriseHint);
+document.getElementById("btnGen").addEventListener("click",genJSON);
+/* ===== Compte rendu Word (.doc ouvrable par Word) ===== */
+function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function wordHtml(o){
+  let body="<h1 style='color:#1F4E5F'>Compte rendu — Traitement d'eau</h1>";
+  resumeTexte(o).split("\n").forEach(l=>{
+    if(l.trim()==="") body+="<div style='height:6px'></div>";
+    else if(l.startsWith("  ")) body+=`<div style='margin:1px 0'>${escHtml(l.trim())}</div>`;
+    else body+=`<h3 style='color:#1F4E5F;margin:12px 0 4px'>${escHtml(l)}</h3>`;
+  });
+  if(o.notes_annexes) body+=`<h3 style='color:#1F4E5F'>NOTES ANNEXES</h3><div>${escHtml(o.notes_annexes)}</div>`;
+  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'><title>Compte rendu</title></head><body style="font-family:Arial,sans-serif;font-size:11pt">${body}</body></html>`;
+}
+function genWord(){ dl(fname("doc"), '﻿'+wordHtml(collect()), "application/msword"); flash("Compte rendu Word généré ✓"); }
+/* ===== Envoi par mail (ouvre Outlook / messagerie par défaut) ===== */
+function sendMail(){
+  const o=collect(), v=o.visite||{};
+  const titre=["Compte rendu visite", v.client, v.exploitation, v.date_visite].filter(x=>x).join(" - ");
+  const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""}.\n\n(Pensez à joindre le fichier généré : Word, JSON ou photo de l'analyse.)\n\nCordialement,\n${v.technicien||""}`;
+  window.location.href = `mailto:?subject=${encodeURIComponent(titre)}&body=${encodeURIComponent(corps)}`;
+}
+
+/* ===================== ARCHIVAGE CLOUD (Google Drive + mail Outlook par lien) ===================== */
+const CLOUD = { clientId:"VOTRE_CLIENT_ID_GOOGLE", dossier:"Fiches-Cerati" };   // clientId OAuth Google (console.cloud.google.com)
+let gToken=null, gExp=0, gTokenClient=null, cloudFiles=[], pendingAction=null, lastFolderLink=null;
+function cloudCfgManquante(){ return CLOUD.clientId.startsWith("VOTRE_"); }
+function gisReady(){ return typeof google!=="undefined" && google.accounts && google.accounts.oauth2; }
+function connecte(){ return gToken && Date.now()<gExp; }
+function cloudInit(){
+  if(cloudCfgManquante()){ document.getElementById("cloudCfg").style.display="block"; document.getElementById("btnCloudAuth").disabled=true; document.getElementById("btnArchive").disabled=true; return; }
+  if(!gisReady()){ setTimeout(cloudInit,400); return; }   // attendre le chargement de la librairie Google
+  gTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLOUD.clientId,
+    scope: "https://www.googleapis.com/auth/drive.file",
+    callback: (resp)=>{ if(resp && resp.access_token){ gToken=resp.access_token; gExp=Date.now()+((resp.expires_in||3500)*1000); cloudUI(); const a=pendingAction; pendingAction=null; if(a) a(); }
+                        else { document.getElementById("cloudErr").textContent="Connexion Google annulée."; } }
+  });
+  cloudUI();
+}
+function cloudUI(){
+  const b=document.getElementById("cloudBadge"), btn=document.getElementById("btnCloudAuth");
+  if(connecte()){ b.textContent="connecté à Google"; b.style.color="var(--accent2)"; btn.textContent="Reconnecter"; }
+  else { b.textContent="non connecté"; b.style.color="var(--bad)"; btn.textContent="Se connecter à Google"; }
+}
+function ensureToken(cb){ if(connecte()) cb(); else { pendingAction=cb; gTokenClient.requestAccessToken(); } }
+async function gGet(url){ const r=await fetch(url,{headers:{Authorization:"Bearer "+gToken}}); if(!r.ok) throw new Error("Drive "+r.status+" : "+(await r.text())); return r.json(); }
+async function gFolder(name, parentId){
+  const qp=[`name='${name.replace(/'/g,"\\'")}'`,"mimeType='application/vnd.google-apps.folder'","trashed=false"];
+  if(parentId) qp.push(`'${parentId}' in parents`);
+  const s=await gGet(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(qp.join(" and "))}&fields=files(id,name)&spaces=drive`);
+  if(s.files && s.files.length) return s.files[0].id;
+  const meta={name, mimeType:"application/vnd.google-apps.folder"}; if(parentId) meta.parents=[parentId];
+  const c=await fetch("https://www.googleapis.com/drive/v3/files?fields=id",{method:"POST",headers:{Authorization:"Bearer "+gToken,"Content-Type":"application/json"},body:JSON.stringify(meta)});
+  if(!c.ok) throw new Error("Création dossier : "+c.status+" "+(await c.text())); return (await c.json()).id;
+}
+async function gUpload(name, parentId, data, mime){
+  const boundary="cerati"+Date.now()+Math.random().toString(36).slice(2);
+  const body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({name, parents:[parentId]}),
+    `\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`, data, `\r\n--${boundary}--`]);
+  const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",{method:"POST",headers:{Authorization:"Bearer "+gToken,"Content-Type":"multipart/related; boundary="+boundary},body});
+  if(!r.ok) throw new Error("Upload "+name+" : "+r.status+" "+(await r.text())); return r.json();
+}
+async function gShareLink(id){
+  try{ await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`,{method:"POST",headers:{Authorization:"Bearer "+gToken,"Content-Type":"application/json"},body:JSON.stringify({role:"reader",type:"anyone"})}); }catch(e){}
+  const j=await gGet(`https://www.googleapis.com/drive/v3/files/${id}?fields=webViewLink`); return j.webViewLink;
+}
+function cloudCRName(o){ const clean=s=>(s||"").replace(/[^a-z0-9]/gi,"_").replace(/_+/g,"_").replace(/^_|_$/g,""); const v=o.visite||{}; const parts=[clean(v.client),clean(v.exploitation),clean(v.date_visite)].filter(x=>x); return parts.length?parts.join("_"):("fiche_"+Date.now()); }
+document.getElementById("btnCloudAuth").addEventListener("click",()=>{
+  if(cloudCfgManquante()){ flash("À configurer (voir le guide)."); return; }
+  if(!gTokenClient){ cloudInit(); return; }
+  gTokenClient.requestAccessToken();
+});
+document.getElementById("cloudFiles").addEventListener("change",e=>{ cloudFiles=Array.from(e.target.files||[]); document.getElementById("cloudFilesList").textContent=cloudFiles.length?("À joindre : "+cloudFiles.map(f=>f.name).join(", ")):""; });
+document.getElementById("btnArchive").addEventListener("click",()=>{
+  if(cloudCfgManquante()){ document.getElementById("cloudErr").textContent="À configurer (clientId Google) — voir le guide."; return; }
+  ensureToken(doArchive);
+});
+async function doArchive(){
+  const err=document.getElementById("cloudErr"), prog=document.getElementById("cloudProg"), res=document.getElementById("cloudResult");
+  err.textContent=""; res.innerHTML="";
+  try{
+    const o=collect(); o.resume_texte=resumeTexte(o); o.meta={app:"Fiche visite Cerati", genere_le:new Date().toISOString()};
+    prog.textContent="Création du dossier…";
+    const root=await gFolder(CLOUD.dossier, null);
+    const sub=await gFolder(cloudCRName(o), root);
+    prog.textContent="Enregistrement du compte rendu…";
+    await gUpload("compte_rendu.json", sub, JSON.stringify(o,null,2), "application/json");
+    await gUpload("compte_rendu.doc", sub, '﻿'+wordHtml(o), "application/msword");
+    if(photoDataURL){ const blob=await (await fetch(photoDataURL)).blob(); await gUpload("analyse.jpg", sub, blob, "image/jpeg"); }
+    for(let i=0;i<cloudFiles.length;i++){ prog.textContent=`Fichier ${i+1}/${cloudFiles.length} : ${cloudFiles[i].name}…`; await gUpload(cloudFiles[i].name, sub, cloudFiles[i], cloudFiles[i].type||"application/octet-stream"); }
+    prog.textContent="Création du lien de partage…";
+    lastFolderLink=await gShareLink(sub);
+    prog.textContent="✓ Archivé dans Google Drive.";
+    res.innerHTML=`<div class="hint">📁 <a href="${lastFolderLink}" target="_blank">Ouvrir le dossier dans Google Drive</a></div>
+      <button class="addbtn" id="btnCloudMail" type="button" style="margin-top:8px;border-color:var(--accent);color:var(--accent)">Envoyer par mail (Outlook)</button>`;
+    document.getElementById("btnCloudMail").addEventListener("click",()=>{
+      const v=(collect().visite)||{};
+      const sujet=["Compte rendu visite",v.client,v.exploitation,v.date_visite].filter(x=>x).join(" - ");
+      const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""} (avec photos/schémas) ici :\n${lastFolderLink}\n\nCordialement,\n${v.technicien||""}`;
+      window.location.href=`mailto:?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+    });
+    flash("Archivé dans Google Drive ✓");
+  }catch(e){ err.textContent=String(e.message||e); prog.textContent=""; }
+}
+cloudInit();
+document.getElementById("btnWord").addEventListener("click",genWord);
+document.getElementById("btnMail").addEventListener("click",sendMail);
+
+/* ===== Init ===== */
+try{localStorage.removeItem(LS);}catch(e){}   // fiche vierge à chaque ouverture (pas de restauration)
+if(animals.length===0) animals.push({esp:"Vache laitière (VL)",nombre:0,systeme:"salle_traite"});
+renderAnimals(); renderAnalysesExtra(); recalc(); repriseHint();
+</script>
+</body>
+</html>
