@@ -748,7 +748,7 @@ function sendMail(){
 }
 
 /* ===================== ARCHIVAGE CLOUD (Google Drive + mail Outlook par lien) ===================== */
-const CLOUD = { clientId:"1019954370878-33l97vj8noll1ubj69icvvq01pbn922e.apps.googleusercontent.com", dossier:"Fiches-Cerati" };   // clientId OAuth Google
+const CLOUD = { clientId:"1019954370878-33l97vj8noll1ubj69icvvq01pbn922e.apps.googleusercontent.com", dossierParent:"CERATI", dossier:"FICHE VISITE TERRAIN" };   // Google Drive : CERATI/FICHE VISITE TERRAIN/(un dossier par CR)
 let gToken=null, gExp=0, gTokenClient=null, cloudFiles=[], pendingAction=null, lastFolderLink=null;
 function cloudCfgManquante(){ return CLOUD.clientId.startsWith("VOTRE_"); }
 function gisReady(){ return typeof google!=="undefined" && google.accounts && google.accounts.oauth2; }
@@ -808,7 +808,8 @@ async function doArchive(){
   try{
     const o=collect(); o.resume_texte=resumeTexte(o); o.meta={app:"Fiche visite Cerati", genere_le:new Date().toISOString()};
     prog.textContent="Création du dossier…";
-    const root=await gFolder(CLOUD.dossier, null);
+    const cerati=await gFolder(CLOUD.dossierParent, null);
+    const root=await gFolder(CLOUD.dossier, cerati);
     const sub=await gFolder(cloudCRName(o), root);
     prog.textContent="Enregistrement du compte rendu…";
     await gUpload("compte_rendu.json", sub, JSON.stringify(o,null,2), "application/json");
