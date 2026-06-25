@@ -748,7 +748,7 @@ function sendMail(){
 }
 
 /* ===================== ARCHIVAGE CLOUD (Google Drive + mail Outlook par lien) ===================== */
-const CLOUD = { clientId:"VOTRE_CLIENT_ID_GOOGLE", dossier:"Fiches-Cerati" };   // clientId OAuth Google (console.cloud.google.com)
+const CLOUD = { clientId:"1019954370878-33l97vj8noll1ubj69icvvq01pbn922e.apps.googleusercontent.com", dossier:"Fiches-Cerati" };   // clientId OAuth Google
 let gToken=null, gExp=0, gTokenClient=null, cloudFiles=[], pendingAction=null, lastFolderLink=null;
 function cloudCfgManquante(){ return CLOUD.clientId.startsWith("VOTRE_"); }
 function gisReady(){ return typeof google!=="undefined" && google.accounts && google.accounts.oauth2; }
