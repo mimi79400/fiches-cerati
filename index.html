@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Fiche de visite — Traitement d'eau Cerati</title>
+<link rel="icon" href="icone_cerati.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icone_cerati.png">
+<meta name="theme-color" content="#17222e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fiches Cerati">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js"></script>
 <style>
   :root{
     --bg:#0f1720; --card:#17222e; --card2:#1d2a38; --line:#2c3c4d;
@@ -47,7 +54,7 @@
     padding:10px 14px;display:flex;gap:10px;z-index:40}
   .bar button{flex:1;border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;color:#06222e}
   .btn-main{background:var(--accent2)}
-  .btn-sec{background:var(--card2);color:var(--accent);border:1px solid var(--line)}
+  .btn-sec{background:#21384a;color:#cfe9f6;border:1px solid var(--accent)}
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0a2a1d;color:var(--accent2);
     border:1px solid var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;
     transition:opacity .25s;pointer-events:none;z-index:50;text-align:center;max-width:90%}
@@ -329,6 +336,7 @@
 </div>
 
 <div class="bar">
+  <button class="btn-sec" id="btnPDF">PDF</button>
   <button class="btn-sec" id="btnWord">Word</button>
   <button class="btn-sec" id="btnMail">Mail</button>
   <button class="btn-main" id="btnGen">JSON</button>
@@ -729,21 +737,100 @@ document.getElementById("btnGen").addEventListener("click",genJSON);
 /* ===== Compte rendu Word (.doc ouvrable par Word) ===== */
 function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function wordHtml(o){
-  let body="<h1 style='color:#1F4E5F'>Compte rendu — Traitement d'eau</h1>";
+  const v=o.visite||{};
+  const g=x=>(x===undefined||x===null||x==="")?"—":escHtml(String(x));
+  const logo=location.href.replace(/[^/]*$/,"")+"icone_cerati.png";
+  const sectionBar=t=>`<div style="margin:14px 0 5px;background:#14387F;color:#fff;padding:5px 10px;font-weight:bold;font-size:11pt">${escHtml(t)}</div>`;
+  // Corps : on saute le bloc visite du résumé (on a notre propre en-tête), on démarre à ANALYSE
+  let body="", started=false;
   resumeTexte(o).split("\n").forEach(l=>{
-    if(l.trim()==="") body+="<div style='height:6px'></div>";
-    else if(l.startsWith("  ")) body+=`<div style='margin:1px 0'>${escHtml(l.trim())}</div>`;
-    else body+=`<h3 style='color:#1F4E5F;margin:12px 0 4px'>${escHtml(l)}</h3>`;
+    if(!started){ if(l.trim().startsWith("ANALYSE")) started=true; else return; }
+    if(l.trim()==="") return;
+    if(l.startsWith("  ")) body+=`<div style="margin:1px 0;font-size:10.5pt">${escHtml(l.trim())}</div>`;
+    else if(l.startsWith("NOTES :")) body+=sectionBar("NOTES")+`<div style="font-size:10.5pt">${escHtml(l.slice(7).trim())}</div>`;
+    else body+=sectionBar(l);
   });
-  if(o.notes_annexes) body+=`<h3 style='color:#1F4E5F'>NOTES ANNEXES</h3><div>${escHtml(o.notes_annexes)}</div>`;
-  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'><title>Compte rendu</title></head><body style="font-family:Arial,sans-serif;font-size:11pt">${body}</body></html>`;
+  if(o.notes_annexes) body+=sectionBar("NOTES ANNEXES")+`<div style="font-size:10.5pt">${escHtml(o.notes_annexes)}</div>`;
+  const cell=(b,w)=>`<td style="background:#eef2f8;padding:5px 8px;width:${w}"><b>${b}</b></td>`;
+  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'><title>Compte rendu</title></head>
+  <body style="font-family:Calibri,Arial,sans-serif;color:#222;font-size:11pt">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:72px"><img src="${logo}" width="60" height="60" alt=""></td>
+      <td style="vertical-align:middle"><span style="font-size:26pt;font-weight:bold;font-style:italic;color:#14387F;letter-spacing:1px">CERATI</span><br><span style="font-size:9pt;color:#14387F">L'innovation pour mieux vous servir</span></td>
+      <td style="text-align:right;vertical-align:top;font-size:9pt;color:#666">COMPTE RENDU DE VISITE<br>${g(v.date_visite)}</td>
+    </tr></table>
+    <div style="border-top:3px solid #E2001A;margin:6px 0 14px"></div>
+    <h1 style="color:#14387F;font-size:18pt;margin:0 0 10px">Traitement d'eau — Compte rendu de visite</h1>
+    <table style="width:100%;border-collapse:collapse;font-size:10.5pt;margin-bottom:6px">
+      <tr>${cell("Client / revendeur","130px")}<td style="padding:5px 8px">${g(v.client)}</td>${cell("Ferme","110px")}<td style="padding:5px 8px">${g(v.exploitation)}</td></tr>
+      <tr>${cell("Lieu","130px")}<td style="padding:5px 8px">${g(v.lieu)}</td>${cell("Usage","110px")}<td style="padding:5px 8px">${g(v.usage_final)}</td></tr>
+    </table>
+    ${body}
+    <div style="margin-top:26px;border-top:1px solid #ccc;padding-top:10px;font-size:10.5pt">
+      Cordialement,<br><b style="color:#14387F;font-size:12pt">Jérémy GUERIN</b><br>Société CERATI
+    </div>
+  </body></html>`;
 }
 function genWord(){ dl(fname("doc"), '﻿'+wordHtml(collect()), "application/msword"); flash("Compte rendu Word généré ✓"); }
+/* ===== Compte rendu PDF stylé (pdfmake) ===== */
+async function logoDataUrl(){
+  try{
+    const r=await fetch(location.href.replace(/[^/]*$/,"")+"logo_cerati.png",{cache:"force-cache"});
+    if(!r.ok) return null;
+    const b=await r.blob();
+    return await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null); fr.readAsDataURL(b); });
+  }catch(e){ return null; }
+}
+async function pdfDef(o){
+  const v=o.visite||{}; const logo=await logoDataUrl();
+  const NAVY="#14387F", RED="#E2001A", LIGHT="#eef2f8";
+  const bar=t=>({table:{widths:["*"],body:[[{text:t,color:"#ffffff",bold:true,fontSize:11,margin:[7,4,7,4]}]]},layout:{defaultBorder:false,fillColor:()=>NAVY},margin:[0,9,0,3]});
+  const lab=t=>({text:t,bold:true,fontSize:9.5,fillColor:LIGHT,margin:[6,4,6,4]});
+  const val=t=>({text:t||"—",fontSize:9.5,margin:[6,4,6,4]});
+  const body=[]; let started=false;
+  resumeTexte(o).split("\n").forEach(l=>{
+    if(!started){ if(l.trim().startsWith("ANALYSE")) started=true; else return; }
+    if(l.trim()==="") return;
+    if(l.startsWith("  ")) body.push({text:l.trim(),fontSize:10,margin:[2,1,0,1]});
+    else if(l.startsWith("NOTES :")){ body.push(bar("NOTES")); body.push({text:l.slice(7).trim(),fontSize:10,margin:[2,1,0,1]}); }
+    else body.push(bar(l));
+  });
+  if(o.notes_annexes){ body.push(bar("NOTES ANNEXES")); body.push({text:o.notes_annexes,fontSize:10,margin:[2,1,0,1]}); }
+  const headLeft = logo
+    ? {image:logo, width:175, margin:[0,2,0,0]}
+    : {stack:[{text:"CERATI",bold:true,italics:true,fontSize:24,color:NAVY,characterSpacing:1},{text:"L'innovation pour mieux vous servir",italics:true,fontSize:8.5,color:NAVY}]};
+  return {
+    pageSize:"A4", pageMargins:[40,108,40,52],
+    defaultStyle:{font:"Roboto",color:"#222222"},
+    header:{margin:[40,20,40,0],stack:[
+      {columns:[ headLeft, {width:135,alignment:"right",margin:[0,6,0,0],stack:[{text:"COMPTE RENDU DE VISITE",fontSize:8,color:"#777777"},{text:v.date_visite||"",fontSize:9,color:"#777777"}]} ]},
+      {canvas:[{type:"line",x1:0,y1:8,x2:515,y2:8,lineWidth:2,lineColor:RED}]}
+    ]},
+    footer:(cur,tot)=>({margin:[40,10,40,0],columns:[
+      {text:"Société CERATI — Jérémy GUERIN",fontSize:8,color:"#999999"},
+      {text:cur+" / "+tot,alignment:"right",fontSize:8,color:"#999999"}
+    ]}),
+    content:[
+      {text:"Traitement d'eau — Compte rendu de visite",fontSize:16,bold:true,color:NAVY,margin:[0,4,0,8]},
+      {table:{widths:[88,"*",58,"*"],body:[
+        [lab("Client / revendeur"),val(v.client),lab("Ferme"),val(v.exploitation)],
+        [lab("Lieu"),val(v.lieu),lab("Usage"),val(v.usage_final)]
+      ]},layout:{defaultBorder:false},margin:[0,0,0,4]},
+      ...body,
+      {margin:[0,22,0,0],canvas:[{type:"line",x1:0,y1:0,x2:515,y2:0,lineWidth:0.7,lineColor:"#cccccc"}]},
+      {text:"Cordialement,",fontSize:10,margin:[0,8,0,0]},
+      {text:"Jérémy GUERIN",fontSize:12,bold:true,color:NAVY,margin:[0,1,0,0]},
+      {text:"Société CERATI",fontSize:10}
+    ]
+  };
+}
+function genPDF(){ pdfDef(collect()).then(def=>{ pdfMake.createPdf(def).download(fname("pdf")); flash("Compte rendu PDF généré ✓"); }).catch(e=>flash("Erreur PDF : "+(e.message||e))); }
+function pdfArrayBuffer(o){ return pdfDef(o).then(def=>new Promise(res=>pdfMake.createPdf(def).getBuffer(b=>res(b)))); }
 /* ===== Envoi par mail (ouvre Outlook / messagerie par défaut) ===== */
 function sendMail(){
   const o=collect(), v=o.visite||{};
   const titre=["Compte rendu visite", v.client, v.exploitation, v.date_visite].filter(x=>x).join(" - ");
-  const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""}.\n\n(Pensez à joindre le fichier généré : Word, JSON ou photo de l'analyse.)\n\nCordialement,\n${v.technicien||""}`;
+  const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""}.\n\n(Pensez à joindre le fichier généré : Word, JSON ou photo de l'analyse.)\n\nCordialement,\nJérémy GUERIN\nSociété CERATI`;
   window.location.href = `mailto:?subject=${encodeURIComponent(titre)}&body=${encodeURIComponent(corps)}`;
 }
 
@@ -813,7 +900,8 @@ async function doArchive(){
     const sub=await gFolder(cloudCRName(o), root);
     prog.textContent="Enregistrement du compte rendu…";
     await gUpload("compte_rendu.json", sub, JSON.stringify(o,null,2), "application/json");
-    await gUpload("compte_rendu.doc", sub, '﻿'+wordHtml(o), "application/msword");
+    try{ const pdfBuf=await pdfArrayBuffer(o); await gUpload("compte_rendu.pdf", sub, new Blob([pdfBuf],{type:"application/pdf"}), "application/pdf"); }
+    catch(e){ await gUpload("compte_rendu.doc", sub, '﻿'+wordHtml(o), "application/msword"); }
     if(photoDataURL){ const blob=await (await fetch(photoDataURL)).blob(); await gUpload("analyse.jpg", sub, blob, "image/jpeg"); }
     for(let i=0;i<cloudFiles.length;i++){ prog.textContent=`Fichier ${i+1}/${cloudFiles.length} : ${cloudFiles[i].name}…`; await gUpload(cloudFiles[i].name, sub, cloudFiles[i], cloudFiles[i].type||"application/octet-stream"); }
     prog.textContent="Création du lien de partage…";
@@ -824,13 +912,14 @@ async function doArchive(){
     document.getElementById("btnCloudMail").addEventListener("click",()=>{
       const v=(collect().visite)||{};
       const sujet=["Compte rendu visite",v.client,v.exploitation,v.date_visite].filter(x=>x).join(" - ");
-      const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""} (avec photos/schémas) ici :\n${lastFolderLink}\n\nCordialement,\n${v.technicien||""}`;
+      const corps=`Bonjour,\n\nVeuillez trouver le compte rendu de la visite${v.exploitation?" — "+v.exploitation:""} (avec photos/schémas) ici :\n${lastFolderLink}\n\nCordialement,\nJérémy GUERIN\nSociété CERATI`;
       window.location.href=`mailto:?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
     });
     flash("Archivé dans Google Drive ✓");
   }catch(e){ err.textContent=String(e.message||e); prog.textContent=""; }
 }
 cloudInit();
+document.getElementById("btnPDF").addEventListener("click",genPDF);
 document.getElementById("btnWord").addEventListener("click",genWord);
 document.getElementById("btnMail").addEventListener("click",sendMail);
 
