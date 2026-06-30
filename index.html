@@ -54,7 +54,7 @@
     padding:10px 14px;display:flex;gap:10px;z-index:40}
   .bar button{flex:1;border:none;border-radius:11px;padding:14px;font-size:15px;font-weight:700;color:#06222e}
   .btn-main{background:var(--accent2)}
-  .btn-sec{background:#21384a;color:#cfe9f6;border:1px solid var(--accent)}
+  .bar .btn-sec{background:#21384a;color:#cfe9f6;border:1px solid var(--accent)}
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0a2a1d;color:var(--accent2);
     border:1px solid var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;
     transition:opacity .25s;pointer-events:none;z-index:50;text-align:center;max-width:90%}
@@ -628,56 +628,74 @@ document.getElementById("importFicheFile").addEventListener("change",e=>{
 
 /* ===== Résumé lisible ===== */
 function resumeTexte(o){
-  const L=[]; const g=(k,d="—")=>{ let c=o,pp=k.split("."); for(const x of pp){c=c&&c[x];} return (c===null||c===undefined||c==="")?d:c; };
+  const L=[];
+  const val=k=>{ let c=o; for(const x of k.split(".")) c=c&&c[x]; return (c===null||c===undefined||c==="")?null:c; };
+  const seg=(label,k,unit)=>{ const v=val(k); return v==null?null:((label?label+" ":"")+v+(unit?" "+unit:"")); };
+  const J=arr=>{ const a=arr.filter(Boolean); return a.length?("  "+a.join(" | ")):null; };   // ligne de contenu (indentée)
+  const ln=s=>s?("  "+s):null;
+  const sec=(title,lines)=>{ const ls=lines.filter(x=>x&&x.trim()!==""); if(!ls.length) return; if(L.length) L.push(""); L.push(title); ls.forEach(x=>L.push(x)); };
+  // ===== EN-TÊTE (identité) =====
   L.push("FICHE DE VISITE — TRAITEMENT D'EAU");
-  L.push("Client : "+g("visite.client")+"  |  Exploitation : "+g("visite.exploitation"));
-  L.push("Lieu : "+g("visite.lieu")+"  |  Date : "+g("visite.date_visite")+"  |  Technicien : "+g("visite.technicien"));
-  L.push("Usage : "+g("visite.usage_final"));
-  L.push("");
-  L.push("ANALYSE D'EAU");
-  L.push(`  pH ${g("analyse.pH")} | Turbidité ${g("analyse.turbidite_NTU")} NTU | Conduct. ${g("analyse.conductivite_uScm")} µS/cm`);
-  L.push(`  Fer ${g("analyse.fer_mgL")} mg/L | Manganèse ${g("analyse.manganese_mgL")} mg/L`);
-  L.push(`  TAC ${g("analyse.TAC_f")} °f | TH ${g("analyse.TH_f")} °f`);
-  L.push(`  Labo : ${g("analyse.labo")} (${g("analyse.date_analyse")})`);
-  (o.analyses_complementaires||[]).forEach((a,i)=>L.push(`  Analyse compl. ${i+1} (${a.date||"?"}) : pH ${a.pH??"—"} | Fe ${a.fer_mgL??"—"} | Mn ${a.manganese_mgL??"—"} | TAC ${a.TAC_f??"—"} | TH ${a.TH_f??"—"} | turb ${a.turbidite_NTU??"—"}${a.remarque?" — "+a.remarque:""}`));
-  if(o.valeurs_retenues_dimensionnement){ const v=o.valeurs_retenues_dimensionnement;
-    L.push(`  VALEURS RETENUES (max, pH mini) : Fe ${v.fer_mgL} | Mn ${v.manganese_mgL} | TAC ${v.TAC_f} | TH ${v.TH_f} | turb ${v.turbidite_NTU} | pH ${v.pH}`); }
-  L.push("");
-  L.push("CHEPTEL / CONSOMMATION");
-  (o.cheptel?.lignes||[]).forEach(l=>L.push(`  - ${l.nombre} × ${l.espece}${l.systeme?" ("+l.systeme+")":""} = ${l.conso_jour_m3} m³/j`));
-  L.push(`  Conso totale : ${g("cheptel.conso_jour_total_m3")} m³/j`);
-  L.push(`  Débit de pointe : ${g("cheptel.vh_max_m3h")} m³/h   |   Débit moyen /10h : ${g("cheptel.debit_moyen_m3h")} m³/h`);
-  L.push(`  Stockage eau traitée : ${g("stockage.eau_traitee_stockee")} → DÉBIT À TRAITER = ${(o.stockage&&o.stockage.eau_traitee_stockee==="Oui")?"débit MOYEN":"débit de POINTE"}`);
-  L.push("");
-  L.push("FORAGE / HYDRAULIQUE");
-  L.push(`  Niveau dynamique ${g("forage.niveau_dynamique_m")} m | Débit forage ${g("forage.debit_forage_m3h")} m³/h`);
-  L.push(`  Débit mesuré pompe : ${g("forage.debit_mesure_m3h")} m³/h à ${g("forage.debit_mesure_pression_bar")} bar`);
-  L.push(`  Pompe : ${g("forage.pompe_marque_modele")}`);
-  L.push(`  Réservoir : ${g("forage.reservoir.type")} ${g("forage.reservoir.volume_L")} L à ${g("forage.reservoir.pression_bar")} bar`);
-  L.push(`  Refoulement : Ø${g("forage.tuyau.diam_int_mm")} mm, ${g("forage.tuyau.longueur_m")} m, ${g("forage.tuyau.matiere")}`);
-  L.push("");
-  L.push("STOCKAGE ET REMISE EN PRESSION");
-  L.push(`  Stockage eau traitée : ${g("stockage.eau_traitee_stockee")} (${g("stockage.volume_cuve_m3")} m³)`);
-  L.push(`  Eau de lavage : ${g("stockage.source_lavage")} | Pointe élevage ${g("stockage.debit_pointe_m3h")} m³/h`);
-  L.push("");
-  L.push("DÉSINFECTION");
-  L.push(`  Besoin : ${g("desinfection.besoin")} | Type : ${g("desinfection.type")} | ${g("desinfection.raison")}`);
-  L.push("");
-  L.push("ALIMENTATION ÉLECTRIQUE");
-  L.push(`  Présente : ${g("electrique.presente")} | Tension : ${g("electrique.tension")}`);
-  L.push(`  Câble : ${g("electrique.section_cable_mm2")} mm², ${g("electrique.longueur_cable_m")} m | Disj. ${g("electrique.disjoncteur_A")} A | Diff. ${g("electrique.differentiel")}`);
-  L.push(`  Protections : ${g("electrique.protections")}`);
-  L.push("");
-  L.push("ÉVACUATION DES EAUX DE LAVAGE");
-  L.push(`  Exutoire : ${g("evacuation.exutoire")} | Distance : ${g("evacuation.distance_m")} m | Ø évacuation : ${g("evacuation.diam_mm")} mm`);
-  L.push(`  Remarques : ${g("evacuation.remarques")}`);
-  L.push("");
-  L.push("PRÉCONISATION INDICATIVE");
-  (o.preconisation_indicative?.etapes||[]).forEach(s=>L.push("  • "+s));
-  if(o.preconisation_indicative?.desinfection) L.push("  • "+o.preconisation_indicative.desinfection);
-  (o.preconisation_indicative?.remarques||[]).forEach(n=>L.push("  ⚠ "+n));
-  L.push("");
-  L.push("NOTES : "+g("notes"));
+  const cli=[seg("Client :","visite.client"),seg("Exploitation :","visite.exploitation")].filter(Boolean).join("  |  "); if(cli) L.push(cli);
+  const li=[seg("Lieu :","visite.lieu"),seg("Date :","visite.date_visite"),seg("Technicien :","visite.technicien")].filter(Boolean).join("  |  "); if(li) L.push(li);
+  const us=seg("Usage :","visite.usage_final"); if(us) L.push(us);
+  // ===== ANALYSE =====
+  const ana=[
+    J([seg("pH","analyse.pH"),seg("Turbidité","analyse.turbidite_NTU","NTU"),seg("Conduct.","analyse.conductivite_uScm","µS/cm")]),
+    J([seg("Fer","analyse.fer_mgL","mg/L"),seg("Manganèse","analyse.manganese_mgL","mg/L")]),
+    J([seg("TAC","analyse.TAC_f","°f"),seg("TH","analyse.TH_f","°f")]),
+    ln((()=>{ const lab=val("analyse.labo"),d=val("analyse.date_analyse"); if(!lab&&!d) return null; return "Labo : "+(lab||"")+(d?" ("+d+")":""); })())
+  ];
+  (o.analyses_complementaires||[]).forEach((a,i)=>{ const sg=[]; const ad=(lab,x,u)=>{ if(x!=null&&x!=="") sg.push(lab+" "+x+(u?" "+u:"")); };
+    ad("pH",a.pH);ad("Fe",a.fer_mgL,"mg/L");ad("Mn",a.manganese_mgL,"mg/L");ad("TAC",a.TAC_f,"°f");ad("TH",a.TH_f,"°f");ad("turb",a.turbidite_NTU,"NTU");
+    if(sg.length) ana.push(`  Analyse compl. ${i+1}${a.date?" ("+a.date+")":""} : `+sg.join(" | ")+(a.remarque?" — "+a.remarque:"")); });
+  if(o.valeurs_retenues_dimensionnement){ const v=o.valeurs_retenues_dimensionnement; const sg=[]; const ad=(lab,x)=>{ if(x!=null&&x!=="") sg.push(lab+" "+x); };
+    ad("Fe",v.fer_mgL);ad("Mn",v.manganese_mgL);ad("TAC",v.TAC_f);ad("TH",v.TH_f);ad("turb",v.turbidite_NTU);ad("pH",v.pH);
+    if(sg.length) ana.push("  VALEURS RETENUES (max, pH mini) : "+sg.join(" | ")); }
+  sec("ANALYSE D'EAU",ana);
+  // ===== CHEPTEL =====
+  const ch=[];
+  (o.cheptel?.lignes||[]).forEach(l=>{ if(l && (l.nombre||l.espece)) ch.push(`  - ${l.nombre||"?"} × ${l.espece||"?"}${l.systeme?" ("+l.systeme+")":""}${(l.conso_jour_m3!=null&&l.conso_jour_m3!=="")?" = "+l.conso_jour_m3+" m³/j":""}`); });
+  ch.push(J([seg("Conso totale","cheptel.conso_jour_total_m3","m³/j")]));
+  ch.push(J([seg("Débit de pointe","cheptel.vh_max_m3h","m³/h"),seg("Débit moyen /10h","cheptel.debit_moyen_m3h","m³/h")]));
+  if(val("stockage.eau_traitee_stockee")) ch.push(`  Stockage eau traitée : ${val("stockage.eau_traitee_stockee")} → DÉBIT À TRAITER = ${o.stockage.eau_traitee_stockee==="Oui"?"débit MOYEN":"débit de POINTE"}`);
+  sec("CHEPTEL / CONSOMMATION",ch);
+  // ===== FORAGE =====
+  const resv=[val("forage.reservoir.type"),val("forage.reservoir.volume_L")?val("forage.reservoir.volume_L")+" L":null,val("forage.reservoir.pression_bar")?"à "+val("forage.reservoir.pression_bar")+" bar":null].filter(Boolean).join(" ");
+  const refo=[val("forage.tuyau.diam_int_mm")?"Ø"+val("forage.tuyau.diam_int_mm")+" mm":null,val("forage.tuyau.longueur_m")?val("forage.tuyau.longueur_m")+" m":null,val("forage.tuyau.matiere")].filter(Boolean).join(", ");
+  sec("FORAGE / HYDRAULIQUE",[
+    J([seg("Niveau dynamique","forage.niveau_dynamique_m","m"),seg("Débit forage","forage.debit_forage_m3h","m³/h")]),
+    ln(val("forage.debit_mesure_m3h")?`Débit mesuré pompe : ${val("forage.debit_mesure_m3h")} m³/h${val("forage.debit_mesure_pression_bar")?" à "+val("forage.debit_mesure_pression_bar")+" bar":""}`:null),
+    ln(val("forage.pompe_marque_modele")?"Pompe : "+val("forage.pompe_marque_modele"):null),
+    ln(resv?"Réservoir : "+resv:null),
+    ln(refo?"Refoulement : "+refo:null)
+  ]);
+  // ===== STOCKAGE =====
+  sec("STOCKAGE ET REMISE EN PRESSION",[
+    ln(val("stockage.eau_traitee_stockee")?`Stockage eau traitée : ${val("stockage.eau_traitee_stockee")}${val("stockage.volume_cuve_m3")?" ("+val("stockage.volume_cuve_m3")+" m³)":""}`:null),
+    J([seg("Eau de lavage","stockage.source_lavage"),seg("Pointe élevage","stockage.debit_pointe_m3h","m³/h")])
+  ]);
+  // ===== DÉSINFECTION =====
+  sec("DÉSINFECTION",[ J([seg("Besoin","desinfection.besoin"),seg("Type","desinfection.type"),seg("","desinfection.raison")]) ]);
+  // ===== ÉLECTRIQUE =====
+  sec("ALIMENTATION ÉLECTRIQUE",[
+    J([seg("Présente","electrique.presente"),seg("Tension","electrique.tension")]),
+    J([seg("Câble","electrique.section_cable_mm2","mm²"),seg("long.","electrique.longueur_cable_m","m"),seg("Disj.","electrique.disjoncteur_A","A"),seg("Diff.","electrique.differentiel")]),
+    ln(val("electrique.protections")?"Protections : "+val("electrique.protections"):null)
+  ]);
+  // ===== ÉVACUATION =====
+  sec("ÉVACUATION DES EAUX DE LAVAGE",[
+    J([seg("Exutoire","evacuation.exutoire"),seg("Distance","evacuation.distance_m","m"),seg("Ø évac.","evacuation.diam_mm","mm")]),
+    ln(val("evacuation.remarques")?"Remarques : "+val("evacuation.remarques"):null)
+  ]);
+  // ===== PRÉCONISATION =====
+  const pre=[];
+  (o.preconisation_indicative?.etapes||[]).forEach(s=>pre.push("  • "+s));
+  if(o.preconisation_indicative?.desinfection) pre.push("  • "+o.preconisation_indicative.desinfection);
+  (o.preconisation_indicative?.remarques||[]).forEach(n=>pre.push("  ⚠ "+n));
+  sec("PRÉCONISATION INDICATIVE",pre);
+  // ===== NOTES =====
+  if(val("notes")) sec("NOTES",["  "+val("notes")]);
   return L.join("\n");
 }
 
@@ -738,13 +756,13 @@ document.getElementById("btnGen").addEventListener("click",genJSON);
 function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function wordHtml(o){
   const v=o.visite||{};
-  const g=x=>(x===undefined||x===null||x==="")?"—":escHtml(String(x));
+  const g=x=>(x===undefined||x===null||x==="")?"":escHtml(String(x));
   const logo=location.href.replace(/[^/]*$/,"")+"icone_cerati.png";
   const sectionBar=t=>`<div style="margin:14px 0 5px;background:#14387F;color:#fff;padding:5px 10px;font-weight:bold;font-size:11pt">${escHtml(t)}</div>`;
-  // Corps : on saute le bloc visite du résumé (on a notre propre en-tête), on démarre à ANALYSE
+  // Corps : on saute le bloc identité (déjà en en-tête), on démarre au 1er bandeau de section
   let body="", started=false;
   resumeTexte(o).split("\n").forEach(l=>{
-    if(!started){ if(l.trim().startsWith("ANALYSE")) started=true; else return; }
+    if(!started){ if(l==="") started=true; return; }   // saute le bloc identité jusqu'à la 1re ligne vide
     if(l.trim()==="") return;
     if(l.startsWith("  ")) body+=`<div style="margin:1px 0;font-size:10.5pt">${escHtml(l.trim())}</div>`;
     else if(l.startsWith("NOTES :")) body+=sectionBar("NOTES")+`<div style="font-size:10.5pt">${escHtml(l.slice(7).trim())}</div>`;
@@ -786,10 +804,10 @@ async function pdfDef(o){
   const NAVY="#14387F", RED="#E2001A", LIGHT="#eef2f8";
   const bar=t=>({table:{widths:["*"],body:[[{text:t,color:"#ffffff",bold:true,fontSize:11,margin:[7,4,7,4]}]]},layout:{defaultBorder:false,fillColor:()=>NAVY},margin:[0,9,0,3]});
   const lab=t=>({text:t,bold:true,fontSize:9.5,fillColor:LIGHT,margin:[6,4,6,4]});
-  const val=t=>({text:t||"—",fontSize:9.5,margin:[6,4,6,4]});
+  const val=t=>({text:t||"",fontSize:9.5,margin:[6,4,6,4]});
   const body=[]; let started=false;
   resumeTexte(o).split("\n").forEach(l=>{
-    if(!started){ if(l.trim().startsWith("ANALYSE")) started=true; else return; }
+    if(!started){ if(l==="") started=true; return; }   // saute le bloc identité jusqu'à la 1re ligne vide
     if(l.trim()==="") return;
     if(l.startsWith("  ")) body.push({text:l.trim(),fontSize:10,margin:[2,1,0,1]});
     else if(l.startsWith("NOTES :")){ body.push(bar("NOTES")); body.push({text:l.slice(7).trim(),fontSize:10,margin:[2,1,0,1]}); }
